@@ -1,0 +1,40 @@
+# Spotify ISRC Finder - Enhanced Requirements
+# Compatible with Streamlit Cloud
+# Updated for improved API client with comprehensive features
+
+# Core framework
+streamlit>=1.28.0
+
+# Data processing and analysis
+pandas>=1.5.0
+
+# HTTP requests and API communication
+requests>=2.28.0
+
+# Image handling for album/artist artwork display
+Pillow>=9.0.0
+
+# Excel export functionality with formatting
+xlsxwriter>=3.0.0
+openpyxl>=3.0.0
+
+# Additional Python standard library modules used:
+# - html (for input sanitization)
+# - re (for regex validation)
+# - time (for rate limiting)
+# - random (for jitter in backoff)
+# - threading (for rate limiter locks)
+# - concurrent.futures (for multi-artist processing)
+# - typing (for type hints)
+# - io (for BytesIO Excel generation)
+# - base64 (for authentication)
+# - urllib.request (for image loading)
+# Note: These are part of Python standard library, no additional installation needed
+
+# Key Features Supported:
+# ✅ Comprehensive album discovery (albums, singles, compilations)
+# ✅ Advanced rate limiting with exponential backoff
+# ✅ Input validation and sanitization
+# ✅ Robust error handling and retry logic
+# ✅ Batch processing optimization
+# ✅ Secure API communication
