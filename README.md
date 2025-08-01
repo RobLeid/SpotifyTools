@@ -16,18 +16,6 @@ streamlit run pages/5_Single\ Artist\ Catalog.py
 streamlit run pages/6_Multiple\ Artist\ Catalog.py
 ```
 
-### Testing
-```bash
-# Run catalog sorting comparison tests
-python run_catalog_sorting_comparison.py
-
-# Run with verbose output
-python run_catalog_sorting_comparison.py --verbose
-
-# Run comprehensive report only
-python run_catalog_sorting_comparison.py --report-only
-```
-
 ### Development Setup
 ```bash
 # Install dependencies
