@@ -966,14 +966,28 @@ def main():
     results, display_data, metadata, search_completed = get_search_results("single_artist_catalog")
 
     if search_completed and results is not None:
-        # Display download button
+        # Display download button with dynamic key to prevent re-rendering issues
         if not results.empty:
             download_filename = metadata.get("download_filename", "Artist_Releases.xlsx")
+            
+            # Generate a stable, unique key based on search context
+            artist_id = metadata.get("artist_id", "unknown")
+            search_type = metadata.get("search_type", "single")
+            markets = metadata.get("markets", metadata.get("market", []))
+            
+            # Create hash for complex market data
+            if isinstance(markets, list):
+                markets_str = "_".join(sorted(markets))
+            else:
+                markets_str = str(markets)
+            
+            download_key = f"download_all_{artist_id}_{search_type}_{hash(markets_str)}"
+            
             create_download_button(
                 df=results,
                 label="📦 Download All Albums to Excel",
                 file_name=download_filename,
-                key="download_all_albums",
+                key=download_key,
             )
 
         # Display album sections

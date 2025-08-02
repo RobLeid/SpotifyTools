@@ -9,7 +9,9 @@ import unicodedata
 import re
 from PIL import Image
 from urllib.request import urlopen
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
+from functools import lru_cache
+from io import BytesIO
 from .tools import to_excel
 from .constants import REGIONS, REGION_COLORS, REGION_ICONS, MARKETS
 from .data_processing import get_all_markets_for_region, calculate_region_percentage
@@ -114,6 +116,23 @@ def style_dataframe_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+@st.cache_data
+def _generate_excel_data(df_json: str, df_shape: tuple) -> Optional[BytesIO]:
+    """
+    Cache-friendly Excel generation function.
+    
+    Args:
+        df_json: JSON representation of the DataFrame
+        df_shape: Shape of the DataFrame (for cache key)
+    
+    Returns:
+        Excel file bytes or None
+    """
+    df = pd.read_json(df_json)
+    return to_excel(df)
+
+
+@st.fragment
 def create_download_button(
     df: pd.DataFrame,
     label: str,
@@ -121,7 +140,7 @@ def create_download_button(
     key: Optional[str] = None
 ) -> None:
     """
-    Create a standardized Excel download button.
+    Create a standardized Excel download button in an isolated fragment.
     
     Args:
         df: DataFrame to download
@@ -129,7 +148,9 @@ def create_download_button(
         file_name: Name for the downloaded file
         key: Optional unique key for the button
     """
-    excel_data = to_excel(df)
+    # Use cached Excel generation to avoid regenerating the same data
+    excel_data = _generate_excel_data(df.to_json(), df.shape)
+    
     if excel_data is not None:
         st.download_button(
             label=label,
@@ -182,75 +203,79 @@ def display_album_row(
     """
     import time
     
-    col1, col2 = st.columns([1, 3])
+    # Create a container for the album row to minimize re-renders
+    album_container = st.container()
     
-    with col1:
-        album_name = album_data.get("name", "Unknown Album")
-        album_image_url = album_data["images"][0]["url"] if album_data.get("images") else None
-        display_image_safe(album_image_url, album_name)
-        
-        # Display availability summary if market data is provided
-        if available_markets is not None or album_data.get("available_markets") is not None:
-            # Use provided available_markets or fall back to album_data
-            markets = available_markets if available_markets is not None else album_data.get("available_markets")
+    with album_container:
+        col1, col2 = st.columns([1, 3])
+    
+        with col1:
+            album_name = album_data.get("name", "Unknown Album")
+            album_image_url = album_data["images"][0]["url"] if album_data.get("images") else None
+            display_image_safe(album_image_url, album_name)
             
-            if markets is not None:
-                # Calculate market counts
-                available_count = len(markets)
-                total_markets = len(MARKETS)
-                missing_count = total_markets - available_count
+            # Display availability summary if market data is provided
+            if available_markets is not None or album_data.get("available_markets") is not None:
+                # Use provided available_markets or fall back to album_data
+                markets = available_markets if available_markets is not None else album_data.get("available_markets")
                 
-                # Display market counts summary with larger numbers and centered layout
-                st.markdown(f"""
-                <div style="display: flex; gap: 30px; margin: 12px 0; justify-content: center;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 28px; font-weight: bold; color: #4CAF50; line-height: 1;">{available_count}</div>
-                        <div style="font-size: 12px; color: #4CAF50; font-weight: 500; margin-top: 2px;">Available Markets</div>
+                if markets is not None:
+                    # Calculate market counts
+                    available_count = len(markets)
+                    total_markets = len(MARKETS)
+                    missing_count = total_markets - available_count
+                    
+                    # Display market counts summary with larger numbers and centered layout
+                    st.markdown(f"""
+                    <div style="display: flex; gap: 30px; margin: 12px 0; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: bold; color: #4CAF50; line-height: 1;">{available_count}</div>
+                            <div style="font-size: 12px; color: #4CAF50; font-weight: 500; margin-top: 2px;">Available Markets</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: bold; color: #F44336; line-height: 1;">{missing_count}</div>
+                            <div style="font-size: 12px; color: #F44336; font-weight: 500; margin-top: 2px;">Unavailable Markets</div>
+                        </div>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 28px; font-weight: bold; color: #F44336; line-height: 1;">{missing_count}</div>
-                        <div style="font-size: 12px; color: #F44336; font-weight: 500; margin-top: 2px;">Unavailable Markets</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Use popover for market details with overlay effect
-                if show_availability_tooltip:
-                    try:
-                        with st.popover("🌍 View Market Details", use_container_width=False):
-                            # Create cache key for this album's market data
-                            cache_key = f"market_tooltip_{album_id}"
-                            cache_timestamp_key = f"market_tooltip_timestamp_{album_id}"
-                            
-                            # Check if we have cached data and if it's still valid (5 minutes)
-                            current_time = time.time()
-                            cached_timestamp = st.session_state.get(cache_timestamp_key, 0)
-                            cache_valid = (current_time - cached_timestamp) < 300  # 5 minutes
-                            
-                            if cache_key in st.session_state and cache_valid:
-                                # Display cached content using Streamlit components
+                    """, unsafe_allow_html=True)
+                    
+                    # Use popover for market details with overlay effect
+                    if show_availability_tooltip:
+                        try:
+                            with st.popover("🌍 View Market Details", use_container_width=False):
+                                # Create cache key for this album's market data
+                                cache_key = f"market_tooltip_{album_id}"
+                                cache_timestamp_key = f"market_tooltip_timestamp_{album_id}"
+                                
+                                # Check if we have cached data and if it's still valid (5 minutes)
+                                current_time = time.time()
+                                cached_timestamp = st.session_state.get(cache_timestamp_key, 0)
+                                cache_valid = (current_time - cached_timestamp) < 300  # 5 minutes
+                                
+                                if cache_key in st.session_state and cache_valid:
+                                    # Display cached content using Streamlit components
+                                    display_market_details_streamlit(markets, album_id)
+                                else:
+                                    # Generate and cache the market details
+                                    display_market_details_streamlit(markets, album_id)
+                                    st.session_state[cache_timestamp_key] = current_time
+                        except Exception:
+                            # Fallback to expander if popover is not available
+                            with st.expander("🌍 View Market Details", expanded=False):
                                 display_market_details_streamlit(markets, album_id)
-                            else:
-                                # Generate and cache the market details
-                                display_market_details_streamlit(markets, album_id)
-                                st.session_state[cache_timestamp_key] = current_time
-                    except Exception:
-                        # Fallback to expander if popover is not available
-                        with st.expander("🌍 View Market Details", expanded=False):
-                            display_market_details_streamlit(markets, album_id)
+            
+            create_download_button(
+                df=df,
+                label="📥 Download Excel",
+                file_name=f"{album_name}_tracks.xlsx",
+                key=f"download_{album_id}"
+            )
         
-        create_download_button(
-            df=df,
-            label="📥 Download Excel",
-            file_name=f"{album_name}_tracks.xlsx",
-            key=f"download_{album_id}"
-        )
-    
-    with col2:
-        styled_df = style_dataframe_columns(df)
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
-    
-    st.divider()
+        with col2:
+            styled_df = style_dataframe_columns(df)
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        
+        st.divider()
 
 
 def display_processing_info(message: str, icon: str = "🎯") -> None:
