@@ -56,9 +56,9 @@ The app uses Streamlit secrets for Spotify API credentials:
 - Export functionality to formatted Excel files
 
 
-## Copilot Assistance
+## AI Assistance
 
-This project was built and improved with the assistance of Copilot for code generation, refactoring, and documentation suggestions. Copilot was used to accelerate development, improve code quality, and automate repetitive tasks.
+This project was built and improved with the assistance of Copilot and Claude for code generation, refactoring, and documentation suggestions. 
 
 ---
 
