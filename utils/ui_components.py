@@ -1121,7 +1121,7 @@ def create_single_artist_markets_component(key: str = "single_artist_markets") -
 
         # Show processing estimate
         if selected_markets:
-            estimated_time = f"{len(selected_markets) * 10}-{len(selected_markets) * 15} seconds"
+            estimated_time = f"{len(selected_markets) * 5}-{len(selected_markets) * 10} seconds"
             st.caption(f"⏱️ **Estimated processing time**: {estimated_time} for {len(selected_markets)} market(s)")
 
     else:  # "all"
